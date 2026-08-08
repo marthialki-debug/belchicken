@@ -99,11 +99,15 @@ export function Footer() {
         <div className="text-sm text-muted-foreground">
           <p className="mb-2 font-display text-lg tracking-wider text-foreground">Contact</p>
           <p>Ouagadougou, Burkina Faso</p>
-          <p>WhatsApp : +226 70 00 00 00</p>
+          <p>
+  <a href="https://wa.me/22606698857" target="_blank" rel="noopener noreferrer">
+    WhatsApp : +226 06 69 88 57
+  </a>
+</p>
         </div>
       </div>
       <div className="border-t border-border/60 py-4 text-center text-xs text-muted-foreground">
-        © {new Date().getFullYear()} Belchiken — Projet ASI
+        © {new Date().getFullYear()} Belchiken — Marthial Ki
       </div>
     </footer>
   );
