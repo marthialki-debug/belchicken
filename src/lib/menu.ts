@@ -262,7 +262,7 @@ export const ZONES: Zone[] = [
   { id: "saaba", name: "Saaba", fee: 2500 },
 ];
 
-export const WHATSAPP_NUMBER = "22670000000";
+export const WHATSAPP_NUMBER = "22606698857";
 
 export function formatFCFA(value: number) {
   return `${value.toLocaleString("fr-FR")} FCFA`;
