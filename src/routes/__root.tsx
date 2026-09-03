@@ -1,3 +1,5 @@
+import { AuthProvider } from "../lib/auth";
+import { AuthGate } from "../components/AuthGate";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   Outlet,
@@ -136,11 +138,14 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <CartProvider>
-        {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-        <Outlet />
-        <Toaster position="top-center" richColors />
-      </CartProvider>
+      <AuthProvider>
+        <CartProvider>
+          <AuthGate>
+            <Outlet />
+          </AuthGate>
+          <Toaster position="top-center" richColors />
+        </CartProvider>
+      </AuthProvider>
     </QueryClientProvider>
   );
 }
