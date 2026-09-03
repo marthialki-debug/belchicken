@@ -8,6 +8,7 @@ import { Header, Footer } from "@/components/Header";
 import { useCart } from "@/lib/cart";
 import { ZONES, WHATSAPP_NUMBER, formatFCFA } from "@/lib/menu";
 import { cn } from "@/lib/utils";
+
 export const Route = createFileRoute("/panier")({
   head: () => ({
     meta: [
@@ -35,6 +36,7 @@ function PanierPage() {
   const [address, setAddress] = useState("");
   const [payMethod, setPayMethod] = useState<"whatsapp" | PaymentMethod>("whatsapp");
   const [showPayment, setShowPayment] = useState(false);
+
   const zone = useMemo(() => ZONES.find((z) => z.id === zoneId) ?? ZONES[0]!, [zoneId]);
   const total = subtotal + (items.length ? zone.fee : 0);
 
@@ -60,53 +62,62 @@ function PanierPage() {
       `Sous-total : ${formatFCFA(subtotal)}`,
       `Livraison : ${formatFCFA(zone.fee)}`,
       `*TOTAL : ${formatFCFA(total)}*`,
+      ...(payment
+        ? [
+            "",
+            "*Paiement*",
+            `Mode : ${payment.method === "orange_money" ? "Orange Money" : "Wave"}`,
+            `Réf. transaction : ${payment.transactionId}`,
+            "Statut : Payé ✅",
+          ]
+        : []),
     ].filter(Boolean);
     return lines.join("\n");
   }
 
   function handleSubmit(e: React.FormEvent) {
-  e.preventDefault();
-  if (!items.length) return;
-  if (!name.trim() || !phone.trim()) {
-    toast.error("Merci d'indiquer votre nom et votre téléphone.");
-    return;
+    e.preventDefault();
+    if (!items.length) return;
+    if (!name.trim() || !phone.trim()) {
+      toast.error("Merci d'indiquer votre nom et votre téléphone.");
+      return;
+    }
+    if (zone.fee > 0 && !address.trim()) {
+      toast.error("Indiquez une adresse ou un repère pour la livraison.");
+      return;
+    }
+    if (payMethod === "whatsapp") {
+      sendOrder();
+    } else {
+      setShowPayment(true);
+    }
   }
-  if (zone.fee > 0 && !address.trim()) {
-    toast.error("Indiquez une adresse ou un repère pour la livraison.");
-    return;
-  }
-  if (payMethod === "whatsapp") {
-    sendOrder();
-  } else {
-    setShowPayment(true);
-  }
-}
 
-function sendOrder(payment?: PaymentReceipt) {
-  const order = saveOrder({
-    customer: { name, phone, address },
-    zone: { id: zone.id, name: zone.name, fee: zone.fee },
-    items,
-    subtotal,
-    total,
-    ...(payment && {
-      payment: {
-        method: payment.method,
-        transactionId: payment.transactionId,
-        phone: payment.phone,
-        status: payment.status,
-      },
-    }),
-  });
-  const url = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(buildMessage(order.id, payment))}`;
-  window.open(url, "_blank", "noopener");
-  clear();
-  toast.success(
-    payment
-      ? `Paiement confirmé, commande ${order.id} envoyée sur WhatsApp !`
-      : `Commande ${order.id} envoyée sur WhatsApp !`,
-  );
-}
+  function sendOrder(payment?: PaymentReceipt) {
+    const order = saveOrder({
+      customer: { name, phone, address },
+      zone: { id: zone.id, name: zone.name, fee: zone.fee },
+      items,
+      subtotal,
+      total,
+      ...(payment && {
+        payment: {
+          method: payment.method,
+          transactionId: payment.transactionId,
+          phone: payment.phone,
+          status: payment.status,
+        },
+      }),
+    });
+    const url = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(buildMessage(order.id, payment))}`;
+    window.open(url, "_blank", "noopener");
+    clear();
+    toast.success(
+      payment
+        ? `Paiement confirmé, commande ${order.id} envoyée sur WhatsApp !`
+        : `Commande ${order.id} envoyée sur WhatsApp !`,
+    );
+  }
 
   return (
     <div className="min-h-screen">
@@ -238,32 +249,70 @@ function sendOrder(payment?: PaymentReceipt) {
                 </div>
               </div>
 
+              <div className="space-y-2">
+                <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                  Mode de paiement
+                </p>
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPayMethod("whatsapp")}
+                    className={cn(
+                      "rounded-sm border px-2 py-2 text-xs font-bold",
+                      payMethod === "whatsapp"
+                        ? "border-primary bg-primary/15 text-foreground"
+                        : "border-border text-muted-foreground",
+                    )}
+                  >
+                    À la livraison
+                  </button>
+                  {PAYMENT_METHODS.map((m) => (
+                    <button
+                      key={m.id}
+                      type="button"
+                      onClick={() => setPayMethod(m.id)}
+                      className={cn(
+                        "rounded-sm border px-2 py-2 text-xs font-bold",
+                        payMethod === m.id
+                          ? "border-primary bg-primary/15 text-foreground"
+                          : "border-border text-muted-foreground",
+                      )}
+                    >
+                      {m.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <button
                 type="submit"
                 className="w-full rounded-sm flame-bg py-3 text-sm font-bold uppercase tracking-wider text-primary-foreground glow"
               >
-                Commander sur WhatsApp
+                {payMethod === "whatsapp" ? "Commander sur WhatsApp" : "Payer et commander"}
               </button>
               <p className="text-center text-xs text-muted-foreground">
-                Aucun paiement en ligne : votre bon de commande pré-rempli part directement au
-                restaurant.
+                {payMethod === "whatsapp"
+                  ? "Aucun paiement en ligne : votre bon de commande pré-rempli part directement au restaurant."
+                  : "Le reçu de paiement s'affichera dans l'app puis partira sur WhatsApp."}
               </p>
             </form>
           </div>
         )}
       </section>
-{showPayment && payMethod !== "whatsapp" && (
-  <PaymentModal
-    method={payMethod}
-    amount={total}
-    initialPhone={phone}
-    onClose={() => setShowPayment(false)}
-    onSuccess={(receipt) => {
-      setShowPayment(false);
-      sendOrder(receipt);
-    }}
-  />
-)}
+
+      {showPayment && payMethod !== "whatsapp" && (
+        <PaymentModal
+          method={payMethod}
+          amount={total}
+          initialPhone={phone}
+          onClose={() => setShowPayment(false)}
+          onSuccess={(receipt) => {
+            setShowPayment(false);
+            sendOrder(receipt);
+          }}
+        />
+      )}
+
       <Footer />
     </div>
   );
