@@ -177,7 +177,7 @@ function PanierPage() {
                 <input
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  placeholder="Téléphone (ex : 70 00 00 00)"
+                  placeholder="Téléphone (ex : 06 69 88 57)"
                   className="h-11 w-full rounded-sm border border-border bg-background px-3 text-sm outline-none focus:border-primary"
                 />
                 <select

@@ -19,7 +19,7 @@ export const Route = createFileRoute("/menu")({
         property: "og:description",
         content: "Buckets, burgers, menus combo et boissons — personnalisables et livrés à Ouaga.",
       },
-    ],
+    ]
   }),
   component: MenuPage,
 });
