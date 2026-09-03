@@ -1,3 +1,5 @@
+import { PaymentModal } from "@/components/PaymentModal";
+import { PAYMENT_METHODS, type PaymentMethod, type PaymentReceipt } from "@/lib/payment";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { Minus, Plus, Trash2 } from "lucide-react";
@@ -5,7 +7,7 @@ import { toast } from "sonner";
 import { Header, Footer } from "@/components/Header";
 import { useCart } from "@/lib/cart";
 import { ZONES, WHATSAPP_NUMBER, formatFCFA } from "@/lib/menu";
-
+import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/panier")({
   head: () => ({
     meta: [
@@ -31,11 +33,12 @@ function PanierPage() {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
-
+  const [payMethod, setPayMethod] = useState<"whatsapp" | PaymentMethod>("whatsapp");
+  const [showPayment, setShowPayment] = useState(false);
   const zone = useMemo(() => ZONES.find((z) => z.id === zoneId) ?? ZONES[0]!, [zoneId]);
   const total = subtotal + (items.length ? zone.fee : 0);
 
-  function buildMessage(orderId: string) {
+  function buildMessage(orderId: string, payment?: PaymentReceipt) {
     const lines = [
       "*NOUVELLE COMMANDE BELCHIKEN*",
       `Réf : ${orderId}`,
@@ -62,28 +65,48 @@ function PanierPage() {
   }
 
   function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!items.length) return;
-    if (!name.trim() || !phone.trim()) {
-      toast.error("Merci d'indiquer votre nom et votre téléphone.");
-      return;
-    }
-    if (zone.fee > 0 && !address.trim()) {
-      toast.error("Indiquez une adresse ou un repère pour la livraison.");
-      return;
-    }
-    const order = saveOrder({
-      customer: { name, phone, address },
-      zone: { id: zone.id, name: zone.name, fee: zone.fee },
-      items,
-      subtotal,
-      total,
-    });
-    const url = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(buildMessage(order.id))}`;
-    window.open(url, "_blank", "noopener");
-    clear();
-    toast.success(`Commande ${order.id} envoyée sur WhatsApp !`);
+  e.preventDefault();
+  if (!items.length) return;
+  if (!name.trim() || !phone.trim()) {
+    toast.error("Merci d'indiquer votre nom et votre téléphone.");
+    return;
   }
+  if (zone.fee > 0 && !address.trim()) {
+    toast.error("Indiquez une adresse ou un repère pour la livraison.");
+    return;
+  }
+  if (payMethod === "whatsapp") {
+    sendOrder();
+  } else {
+    setShowPayment(true);
+  }
+}
+
+function sendOrder(payment?: PaymentReceipt) {
+  const order = saveOrder({
+    customer: { name, phone, address },
+    zone: { id: zone.id, name: zone.name, fee: zone.fee },
+    items,
+    subtotal,
+    total,
+    ...(payment && {
+      payment: {
+        method: payment.method,
+        transactionId: payment.transactionId,
+        phone: payment.phone,
+        status: payment.status,
+      },
+    }),
+  });
+  const url = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(buildMessage(order.id, payment))}`;
+  window.open(url, "_blank", "noopener");
+  clear();
+  toast.success(
+    payment
+      ? `Paiement confirmé, commande ${order.id} envoyée sur WhatsApp !`
+      : `Commande ${order.id} envoyée sur WhatsApp !`,
+  );
+}
 
   return (
     <div className="min-h-screen">
@@ -229,7 +252,18 @@ function PanierPage() {
           </div>
         )}
       </section>
-
+{showPayment && payMethod !== "whatsapp" && (
+  <PaymentModal
+    method={payMethod}
+    amount={total}
+    initialPhone={phone}
+    onClose={() => setShowPayment(false)}
+    onSuccess={(receipt) => {
+      setShowPayment(false);
+      sendOrder(receipt);
+    }}
+  />
+)}
       <Footer />
     </div>
   );

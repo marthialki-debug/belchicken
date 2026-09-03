@@ -28,6 +28,12 @@ export type Order = {
   items: CartItem[];
   subtotal: number;
   total: number;
+  payment?: {
+    method: "orange_money" | "wave";
+    transactionId: string;
+    phone: string;
+    status: "success";
+  };
 };
 
 const CART_KEY = "belchiken.cart.v1";
